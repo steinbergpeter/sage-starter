@@ -37,7 +37,7 @@ function render(element, container) {
       ? document.createTextNode('')
       : document.createElement(element.type);
 
-  // add all Properties/Attributes
+  // add all Properties/Attributes (other than children)
   Object.keys(element.props)
     .filter((key) => (key !== 'children' ? true : false))
     .forEach((prop) => (domNode[prop] = element.props[prop]));
@@ -48,5 +48,23 @@ function render(element, container) {
   // Render on screen
   container.appendChild(domNode);
 }
+
+let nextUnitOfWork = null;
+
+function workLoop(deadLine) {
+  let shouldYield = false;
+  while (nextUnitOfWork && !shouldYield) {
+    nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+    shouldYield = deadLine.timeRemaining() < 1;
+  }
+  requestIdleCallback(workLoop);
+}
+
+function performUnitOfWork() {
+  //do work
+  // return next unit of work
+}
+
+requestIdleCallback(workLoop);
 
 export default Sage;
