@@ -30,26 +30,29 @@ function createTextElement(text) {
   };
 }
 
-function render(element, container) {
-  // create DOM node
+function createDom(fiber) {
   const domNode =
-    element.type == 'TEXT_ELEMENT'
+    fiber.type == 'TEXT_ELEMENT'
       ? document.createTextNode('')
-      : document.createElement(element.type);
+      : document.createElement(fiber.type);
 
-  // add all Properties/Attributes (other than children)
-  Object.keys(element.props)
+  Object.keys(fiber.props)
     .filter((key) => (key !== 'children' ? true : false))
-    .forEach((prop) => (domNode[prop] = element.props[prop]));
+    .forEach((prop) => (domNode[prop] = fiber.props[prop]));
 
-  // Add all children
-  element.props.children.forEach((child) => render(child, domNode));
-
-  // Render on screen
-  container.appendChild(domNode);
+  return domNode;
 }
 
 let nextUnitOfWork = null;
+
+function render(element, container) {
+  nextUnitOfWork = {
+    domNode: container,
+    props: {
+      children: [element],
+    },
+  };
+}
 
 function workLoop(deadLine) {
   let shouldYield = false;
@@ -60,9 +63,30 @@ function workLoop(deadLine) {
   requestIdleCallback(workLoop);
 }
 
-function performUnitOfWork() {
-  //do work
-  // return next unit of work
+function performUnitOfWork(fiber) {
+  if (!fiber.domNode) fiber.domNode = createDom(fiber);
+  if (fiber.parent) fiber.parent.domNode.appendChild(fiber.domNode);
+  const elements = fiber.props.children;
+  let index = 0;
+  let prevSibling = null;
+  while (index < elements.length) {
+    const element = elements[index];
+    const newFiber = {
+      type: element.type,
+      props: element.props,
+      parent: fiber,
+      domNode: null,
+    };
+    index == 0 ? (fiber.child = newFiber) : (prevSibling.sibling = newFiber);
+    prevSibling = newFiber;
+    index++;
+  }
+  if (fiber.child) return fiber.child;
+  let nextFiber = fiber;
+  while (nextFiber) {
+    if (nextFiber.sibling) return nextFiber.sibling;
+    nextFiber = nextFiber.parent;
+  }
 }
 
 requestIdleCallback(workLoop);
