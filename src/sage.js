@@ -83,7 +83,47 @@ function commitWork(fiber) {
   commitWork(fiber.sibling);
 }
 
-function updateDom(dom, prevProps, nextProps) {}
+function updateDom(domNode, prevProps, nextProps) {
+  // Helper functions
+  const isEvent = (key) => key.startsWith('on');
+  const isProperty = (key) => key !== 'children' && !isEvent(key);
+  const isNew = (prev, key) => prev[key] !== next[key];
+  const isGone = (prev, next) => (key) => !(key in next);
+
+  // remove old/changed event listeners from domNode
+  Object.keys(prevProps)
+    .filter(isEvent)
+    .filter((key) => !(key in nextProps) || isNew(prevProps, nextProps)(key))
+    .forEach((name) => {
+      domNode.removeEventListener(
+        name.toLowerCase().substring(2),
+        prevProps[name]
+      );
+    });
+
+  // add new event listeners to domNode
+  Object.keys(nextProps)
+    .filter(isEvent)
+    .filter(isNew(prevProps, nextProps))
+    .forEach((name) => {
+      domNode.addEventlistener(
+        name.toLowerCase().substring(2),
+        nextProps[name]
+      );
+    });
+
+  // remove old properties from domNode
+  Object.keys(prevProps)
+    .filter(isProperty)
+    .filter(isGone(prevProps, nextProps))
+    .forEach((name) => (domNode[name] = ''));
+
+  // set new/changed properties
+  Object.keys(nextProps)
+    .filter(isProperty)
+    .filter(isNew(prevProps, nextProps))
+    .forEach((name) => (domNode[name] = nextProps[name]));
+}
 
 function workLoop(deadLine) {
   let shouldYield = false;
